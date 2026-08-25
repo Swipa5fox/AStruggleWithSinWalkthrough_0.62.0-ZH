@@ -301,6 +301,7 @@ code { background: #303640; padding: 1px 6px; font-size: 13px; }
 #footer {
   width: min(1120px, 100%); color: var(--dim); font-size: 13px;
   margin: 24px auto 0; padding: 14px 4px 24px; border-top: 1px solid var(--line);
+  text-align: center;
 }
 @media (max-width: 760px) {
   #layout { display: block; }
@@ -332,7 +333,7 @@ code { background: #303640; padding: 1px 6px; font-size: 13px; }
     <div id="page-title" aria-live="polite">基本信息</div>
     <main id="content">
       {sections}
-      <div id="footer">A Struggle With Sin WalkThrough · 中文翻译版 · 原攻略来自 <a href="https://github.com/AloofTooth/ASWSWalkthrough">AloofTooth/ASWSWalkthrough</a> · 术语：好感度 A / 堕落值 C / 欲望值</div>
+      <div id="footer">A Struggle With Sin中文攻略</div>
     </main>
   </div>
 </div>
