@@ -333,7 +333,7 @@ code { background: #303640; padding: 1px 6px; font-size: 13px; }
     <div id="page-title" aria-live="polite">基本信息</div>
     <main id="content">
       {sections}
-      <div id="footer">A Struggle With Sin中文攻略</div>
+      <div id="footer">A Struggle With Sin 中文攻略</div>
     </main>
   </div>
 </div>
