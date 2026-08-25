@@ -1,14 +1,8 @@
 # 基本信息
 
-这是游戏《A Struggle With Sin》的攻略，作者 Chyos（
-[https://subscribestar.adult/chyos](https://subscribestar.adult/chyos)
-、
-[https://www.patreon.com/Chyos](https://www.patreon.com/Chyos)
-）。
+游戏A Struggle With Sin的中文攻略
 
-文中将用 A 和 C 分别作为好感度（Affection）和堕落值（Corruption）的简写。
-
-最新版本的新增内容将用绿色高亮标出。
+文中将用 A 和 C 来作为好感度（Affection）和堕落值（Corruption）的简写。
 
 当前攻略支持的游戏版本：0.62.0
 

@@ -3,15 +3,20 @@
 Build a self-contained static site from markdown-zh/ (Chinese walkthrough).
 Output: dist-zh/index.html (all sections inline) + dist-zh/images/
 Zero external dependencies: no CDN, no JS framework, works from any static host.
+
+Usage:
+    python build_site.py
 """
+import html as html_mod
 import os
 import re
 import shutil
-import html as html_mod
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 MD_DIR = os.path.join(BASE, "markdown-zh")
+IMG_SRC = os.path.join(MD_DIR, "images")
 OUT = os.path.join(BASE, "dist-zh")
+IMG_OUT = os.path.join(OUT, "images")
 
 # (slug, menu title) - same order as README
 SECTIONS = [
@@ -71,19 +76,47 @@ SECTIONS = [
 ]
 
 
-def inline(text):
-    """Inline markdown: bold, images, links, code ticks."""
-    # escape html first, then apply markdown patterns on the escaped text
-    t = html_mod.escape(text, quote=False)
-    # bold
-    t = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", t)
-    # image
-    t = re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", r'<img src="\2" alt="\1" loading="lazy">', t)
-    # link
-    t = re.sub(r"\[([^\]]+)\]\(([^)]+)\)",
-               lambda m: f'<a href="{m.group(2)}">{m.group(1)}</a>', t)
-    return t
+# ---------------------------------------------------------------------------
+# Inline markdown
+# ---------------------------------------------------------------------------
 
+_CODE_RE = re.compile(r"`([^`]+)`")
+_IMG_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+
+
+def _norm_image_src(src):
+    """Normalize an image path to a form relative to dist-zh/index.html."""
+    src = src.strip()
+    src = re.sub(r"^\.?/", "", src)  # ./images -> images, /images -> images
+    src = re.sub(r"^(?:markdown-zh/)?images/", "images/", src)
+    return src
+
+
+def _link_repl(m):
+    # link text may itself contain inline markup (e.g. **bold**)
+    body = _BOLD_RE.sub(r"<strong>\1</strong>", m.group(1))
+    return f'<a href="{m.group(2)}">{body}</a>'
+
+
+def inline(text):
+    """Inline markdown: code, images, links, bold. HTML-escaped first."""
+    t = html_mod.escape(text, quote=False)
+    # code spans first so their content is never treated as other syntax
+    t = _CODE_RE.sub(r"<code>\1</code>", t)
+    # images before links, so `![alt](src)` isn't eaten by the link rule
+    t = _IMG_RE.sub(lambda m: f'<img src="{_norm_image_src(m.group(2))}" '
+                              f'alt="{m.group(1)}" loading="lazy">', t)
+    t = _LINK_RE.sub(_link_repl, t)
+    t = _BOLD_RE.sub(r"<strong>\1</strong>", t)
+    # drop orphaned markers left by sloppy source (unclosed ** etc.)
+    return t.replace("**", "").replace("__", "")
+
+
+# ---------------------------------------------------------------------------
+# Block-level markdown
+# ---------------------------------------------------------------------------
 
 def md_to_html(md_text):
     """Convert our markdown subset to HTML with proper list nesting."""
@@ -104,20 +137,12 @@ def md_to_html(md_text):
             kind = stack.pop()[0]
             out.append(f"</{kind}>")
 
-    def close_to(indent):
-        while stack and stack[-1][1] > indent:
-            kind = stack.pop()[0]
-            out.append(f"</{kind}>")
-        if stack and stack[-1][1] == indent:
-            pass
-
     i = 0
     while i < len(lines):
         line = lines[i].rstrip()
         stripped = line.strip()
         if not stripped:
             flush_para()
-            out.append("")
             i += 1
             continue
         # heading
@@ -197,44 +222,42 @@ def md_to_html(md_text):
     return "\n".join(out)
 
 
-def build():
-    os.makedirs(OUT, exist_ok=True)
-    # images
-    img_out = os.path.join(OUT, "images")
-    os.makedirs(img_out, exist_ok=True)
-    src_img = os.path.join(MD_DIR, "images")
-    if os.path.isdir(src_img):
-        for n in os.listdir(src_img):
-            shutil.copy2(os.path.join(src_img, n), os.path.join(img_out, n))
+def strip_h1(md_text):
+    """Remove the leading `# Title` line (the menu provides the title)."""
+    md_text = md_text.lstrip("\ufeff")
+    lines = md_text.splitlines()
+    if lines and re.match(r"^#\s+", lines[0]):
+        lines = lines[1:]
+    return "\n".join(lines).strip()
 
-    nav_items = []
-    sections_html = []
-    for slug, title in SECTIONS:
-        fp = None
-        for cand in os.listdir(MD_DIR):
-            if cand.endswith(f"-{slug}.md"):
-                fp = os.path.join(MD_DIR, cand)
-                break
-        if not fp:
-            continue
-        with open(fp, "r", encoding="utf-8") as f:
-            md_text = f.read()
-        # strip the "# Title" first line (title comes from menu)
-        md_text = re.sub(r"^#\s+.+\n", "", md_text, count=1).strip()
-        body = md_to_html(md_text)
-        nav_items.append(
-            f'<li><button class="section-link" type="button" data-target="{slug}">{html_mod.escape(title)}</button></li>'
-        )
-        sections_html.append(
-            f'<section id="{slug}" class="walkthrough-card" data-title="{html_mod.escape(title)}">'
-            f'\n<header class="card-title"><h2>{html_mod.escape(title)}</h2></header>'
-            f'\n<div class="card-body">{body}</div>\n</section>'
-        )
 
-    nav = "\n".join(nav_items)
-    sections = "\n".join(sections_html)
+# ---------------------------------------------------------------------------
+# Assets
+# ---------------------------------------------------------------------------
 
-    styles = """
+def discover_md():
+    """Map slug -> absolute md path from filenames like `03-wt-house.md`."""
+    found = {}
+    for name in os.listdir(MD_DIR):
+        m = re.fullmatch(r"\d+-([A-Za-z0-9-]+)\.md", name)
+        if m:
+            found[m.group(1)] = os.path.join(MD_DIR, name)
+    return found
+
+
+def copy_images():
+    """Copy markdown-zh/images -> dist-zh/images, return the copied names."""
+    os.makedirs(IMG_OUT, exist_ok=True)
+    if not os.path.isdir(IMG_SRC):
+        return []
+    copied = []
+    for name in os.listdir(IMG_SRC):
+        shutil.copy2(os.path.join(IMG_SRC, name), os.path.join(IMG_OUT, name))
+        copied.append(name)
+    return copied
+
+
+STYLES = """
 :root {
   --bg: #222222; --panel: #1c1f24; --panel-2: #252a31;
   --line: rgba(100, 200, 255, .30); --line-strong: rgba(100, 200, 255, .72);
@@ -313,6 +336,105 @@ code { background: #303640; padding: 1px 6px; font-size: 13px; }
 }
 """
 
+SCRIPTS = """
+(function() {
+  var links = document.querySelectorAll('.section-link');
+  var cards = document.querySelectorAll('.walkthrough-card');
+  var title = document.getElementById('page-title');
+
+  function show(id) {
+    var target = null;
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].id === id) { target = cards[i]; }
+    }
+    if (!target) { return; }
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].classList.toggle('active', cards[i] === target);
+      cards[i].setAttribute('aria-hidden', cards[i] === target ? 'false' : 'true');
+    }
+    for (var i = 0; i < links.length; i++) {
+      links[i].classList.toggle('active', links[i].getAttribute('data-target') === id);
+      links[i].setAttribute('aria-current', links[i].getAttribute('data-target') === id ? 'page' : 'false');
+    }
+    title.textContent = target.getAttribute('data-title') || id;
+  }
+
+  for (var i = 0; i < links.length; i++) {
+    links[i].addEventListener('click', function() {
+      show(this.getAttribute('data-target'));
+      document.getElementById('content').scrollTop = 0;
+      document.getElementById('workspace').scrollTop = 0;
+    });
+  }
+
+  function fromHash() {
+    var id = (location.hash || '').replace('#', '');
+    if (id) { show(id); }
+  }
+  window.addEventListener('hashchange', fromHash);
+
+  var first = document.querySelector('.walkthrough-card');
+  if (first) {
+    first.classList.add('active');
+    first.setAttribute('aria-hidden', 'false');
+    var firstLink = document.querySelector('.section-link');
+    if (firstLink) { firstLink.classList.add('active'); firstLink.setAttribute('aria-current', 'page'); }
+  }
+  fromHash();
+})();
+"""
+
+
+# ---------------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------------
+
+def build():
+    os.makedirs(OUT, exist_ok=True)
+    existing_imgs = set(copy_images())
+
+    by_slug = discover_md()
+    known = {slug for slug, _ in SECTIONS}
+    warnings = []
+    for slug in sorted(set(by_slug) - known):
+        warnings.append(f"md file not listed in SECTIONS (ignored): {slug}.md")
+    for slug, _ in SECTIONS:
+        if slug not in by_slug:
+            warnings.append(f"SECTIONS entry not found on disk: {slug}")
+
+    nav_items = []
+    sections_html = []
+    missing_images = []
+    idx = 0  # index of successfully rendered sections
+    for slug, title in SECTIONS:
+        fp = by_slug.get(slug)
+        if not fp:
+            continue
+        with open(fp, "r", encoding="utf-8") as f:
+            md_text = f.read()
+        md_text = strip_h1(md_text)
+        # check that every image referenced by this file was copied over
+        for _, src in _IMG_RE.findall(md_text):
+            norm = _norm_image_src(src)
+            if os.path.basename(norm) not in existing_imgs:
+                missing_images.append(f"{slug}: {norm}")
+        body = md_to_html(md_text)
+        first = idx == 0
+        nav_items.append(
+            f'<li><button class="section-link" type="button" data-target="{slug}"'
+            f'{" aria-current=\"page\"" if first else ""}>{html_mod.escape(title)}</button></li>'
+        )
+        sections_html.append(
+            f'<section id="{slug}" class="walkthrough-card" '
+            f'data-title="{html_mod.escape(title)}" aria-hidden="{"false" if first else "true"}">'
+            f'\n<header class="card-title"><h2>{html_mod.escape(title)}</h2></header>'
+            f'\n<div class="card-body">{body}</div>\n</section>'
+        )
+        idx += 1
+
+    nav = "\n".join(nav_items)
+    sections = "\n".join(sections_html)
+
     page = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -320,7 +442,7 @@ code { background: #303640; padding: 1px 6px; font-size: 13px; }
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A Struggle With Sin WalkThrough</title>
 <style>
-{styles}
+{STYLES}
 </style>
 </head>
 <body>
@@ -338,59 +460,21 @@ code { background: #303640; padding: 1px 6px; font-size: 13px; }
   </div>
 </div>
 <script>
-(function() {{
-  var links = document.querySelectorAll('.section-link');
-  var cards = document.querySelectorAll('.walkthrough-card');
-  var title = document.getElementById('page-title');
-
-  function show(id) {{
-    var target = null;
-    for (var i = 0; i < cards.length; i++) {{
-      if (cards[i].id === id) {{ target = cards[i]; }}
-    }}
-    if (!target) {{ return; }}
-    for (var i = 0; i < cards.length; i++) {{
-      cards[i].classList.toggle('active', cards[i] === target);
-      cards[i].setAttribute('aria-hidden', cards[i] === target ? 'false' : 'true');
-    }}
-    for (var i = 0; i < links.length; i++) {{
-      links[i].classList.toggle('active', links[i].getAttribute('data-target') === id);
-      links[i].setAttribute('aria-current', links[i].getAttribute('data-target') === id ? 'page' : 'false');
-    }}
-    title.textContent = target.getAttribute('data-title') || id;
-  }}
-
-  for (var i = 0; i < links.length; i++) {{
-    links[i].addEventListener('click', function() {{
-      show(this.getAttribute('data-target'));
-      document.getElementById('content').scrollTop = 0;
-      document.getElementById('workspace').scrollTop = 0;
-    }});
-  }}
-
-  function fromHash() {{
-    var id = (location.hash || '').replace('#', '');
-    if (id) {{ show(id); }}
-  }}
-  window.addEventListener('hashchange', fromHash);
-
-  var first = document.querySelector('.walkthrough-card');
-  if (first) {{
-    first.classList.add('active');
-    first.setAttribute('aria-hidden', 'false');
-    var firstLink = document.querySelector('.section-link');
-    if (firstLink) {{ firstLink.classList.add('active'); firstLink.setAttribute('aria-current', 'page'); }}
-  }}
-  fromHash();
-}})();
+{SCRIPTS}
 </script>
 </body>
 </html>
 """
     with open(os.path.join(OUT, "index.html"), "w", encoding="utf-8") as f:
         f.write(page)
+
     print(f"Built {os.path.join(OUT, 'index.html')} ({len(page)} bytes)")
-    print(f"Images: {len(os.listdir(img_out))}")
+    print(f"Images: {len(existing_imgs)}")
+    for w in warnings:
+        print(f"WARN: {w}")
+    for m in missing_images:
+        print(f"MISSING IMG: {m}")
+
 
 if __name__ == "__main__":
     build()

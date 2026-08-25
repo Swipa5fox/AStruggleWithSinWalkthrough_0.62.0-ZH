@@ -1,2 +1,5 @@
 # WorkBuddy local memory (never commit)
 .workbuddy/
+
+# Python
+__pycache__/
