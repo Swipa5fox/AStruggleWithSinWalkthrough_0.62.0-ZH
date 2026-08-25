@@ -1,62 +1,18 @@
-# A Struggle With Sin — 攻略（中文版）
+# A Struggle With Sin 中文游戏攻略站（适用于0.62.0版本的游戏）
 
-> 来源：[AloofTooth/ASWSWalkthrough](https://github.com/AloofTooth/ASWSWalkthrough)（GitHub，2026-04-17 快照）
-> 简体中文翻译版，基于英文 Markdown 全量翻译，内容与步骤无删减。
-> 术语约定：好感度（Affection，简写 A）、堕落值（Corruption，简写 C）、欲望值（Lust）。
-> 人名保留英文原名（首次出现附中文注音）。
+## 🌐 在线入口
 
-## 目录
+**https://swipa5fox.github.io/AStruggleWithSinWalkthrough_0.62.0-ZH/**
 
-- [01. 基本信息 Information](01-wt-info.md)
-- [02. 技巧与提示 Tips & Tricks](02-wt-tips.md)
-- [03. 房屋翻新 House Renovation](03-wt-house.md)
-- [04. 序章 Intro](04-wt-intro.md)
-- [05. 主角 Main Character](05-wt-mc.md)
-- [06. 教堂 The Church](07-wt-church.md)
-- [07. 修道院 The Monastery](08-wt-monastery.md)
-- [08. Mira（米拉）](06-wt-mira.md)
-- [09. Tia（缇娅）](09-wt-tia.md)
-- [10. Katherin（凯瑟琳）](10-wt-katherin.md)
-- [11. Kate（凯特）](11-wt-kate.md)
-- [12. Claire（克莱尔）](12-wt-claire.md)
-- [13. Carmen（卡门）](13-wt-carmen.md)
-- [14. Lucius（卢修斯）](14-wt-lucius.md)
-- [15. Frisha（弗丽莎）](15-wt-frisha.md)
-- [16. Arianna（阿里安娜）](16-wt-arianna.md)
-- [17. Verena（维蕾娜）](17-wt-verena.md)
-- [18. Rose（萝丝）](18-wt-rose.md)
-- [19. Emily（艾米丽）](19-wt-emily.md)
-- [20. Corven（科尔文）](20-wt-corven.md)
-- [21. John（约翰）](21-wt-john.md)
-- [22. Melissa（梅丽莎）](22-wt-melissa.md)
-- [23. Imawyn（伊玛温）](23-wt-imawyn.md)
-- [24. Lyvia（莉薇亚）](24-wt-lyvia.md)
-- [25. Maui（马乌伊）](25-wt-maui.md)
-- [26. Bianca（比安卡）](26-wt-bianca.md)
-- [27. Gavina（加维娜）](27-wt-gavina.md)
-- [28. Ugotha（乌戈萨）](28-wt-ugotha.md)
-- [29. Snikka（斯妮卡）](29-wt-snikka.md)
-- [30. Natasha（娜塔莎）](30-wt-natasha.md)
-- [31. Ophilia（奥菲莉亚）](31-wt-ophilia.md)
-- [32. Anya（安雅）](32-wt-anya.md)
-- [33. Penny（佩妮）](33-wt-penny.md)
-- [34. Lilly（莉莉）](34-wt-lilly.md)
-- [35. Elisabeth（伊丽莎白）](35-wt-elisabeth.md)
-- [36. Gwen（格温）](36-wt-gwen.md)
-- [37. Sabrina（萨布丽娜）](37-wt-sabrina.md)
-- [38. Athia（阿西娅）](38-wt-athia.md)
-- [39. Bridget（布丽奇特）](39-wt-bridget.md)
-- [40. Agatha（阿加莎）](40-wt-agatha.md)
-- [41. Heather（希瑟）](41-wt-heather.md)
-- [42. 鲁玛村 Rumah Village](42-wt-rumah.md)
-- [43. Raaisha（拉伊莎）](43-wt-raaisha.md)
-- [44. Hiba（希芭）](44-wt-hiba.md)
-- [45. Nyra（妮拉）](45-wt-nyra.md)
-- [46. Ayita（阿伊塔）](46-wt-ayita.md)
-- [47. Umah（乌玛）](47-wt-umah.md)
-- [48. 重建达克霍特 Rebuilding Darkholt](48-wt-darkholt.md)
-- [49. 市长宅邸 Mayor's Mansion](49-wt-mansion.md)
-- [50. Julia（茱莉亚）](50-wt-julia.md)
-- [51. Liandra（莉安德拉）](51-wt-liandra.md)
-- [52. Helena（海伦娜）](52-wt-helena.md)
-- [53. Yasmine（雅斯敏）](53-wt-yasmine.md)
+左侧菜单有现版本全部攻略模块，对角色以及区域任务已进行分区显示，并有截图内嵌帮助大家解密。
+
+## 说明
+
+- 英文版原攻略链接：https://github.com/AloofTooth/ASWSWalkthrough
+- 游戏作者 Chyos：https://subscribestar.adult/chyos · https://www.patreon.com/Chyos
+- 仅作于游戏内容分享，不适用于任何商业形式！！
+
+## 问题
+
+Q：现在版本都更新到0.62.3c了为什么攻略的版本还停留在0.62.0<br>
+A：因为本人也没玩到最新更新到的内容...
