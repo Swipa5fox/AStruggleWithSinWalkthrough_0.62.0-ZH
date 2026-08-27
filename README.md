@@ -8,11 +8,10 @@
 
 ## 说明
 
-- 英文版原攻略链接：https://github.com/AloofTooth/ASWSWalkthrough
-- 游戏作者 Chyos：https://subscribestar.adult/chyos · https://www.patreon.com/Chyos
+- 游戏作者 Chyos：https://subscribestar.adult/chyos,https://www.patreon.com/Chyos
 - 仅作于游戏内容分享，不适用于任何商业形式！！
 
-## 问题
+## Q&A
 
 Q：现在版本都更新到0.62.5d了为什么攻略的版本还停留在0.62.0<br>
 A：因为本人也没玩到最新更新到的内容...
