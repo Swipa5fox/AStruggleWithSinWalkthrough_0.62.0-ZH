@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Build a self-contained static site from markdown-zh/ (Chinese walkthrough).
-Output: dist-zh/index.html (all sections inline) + dist-zh/images/
-Zero external dependencies: no CDN, no JS framework, works from any static host.
+从 markdown-zh/（中文攻略）构建一个自包含的静态站点。
+输出：dist-zh/index.html（所有章节内联） + dist-zh/images/
+零外部依赖：无 CDN、无 JS 框架，可部署到任何静态托管平台。
 
-Usage:
+用法：
     python build_site.py
 """
 import html as html_mod
@@ -18,7 +18,7 @@ IMG_SRC = os.path.join(MD_DIR, "images")
 OUT = os.path.join(BASE, "dist-zh")
 IMG_OUT = os.path.join(OUT, "images")
 
-# (slug, menu title) - same order as README
+# (slug, 菜单标题) - 顺序与 README 保持一致
 SECTIONS = [
     ("wt-info", "基本信息"),
     ("wt-tips", "技巧与提示"),
@@ -77,7 +77,7 @@ SECTIONS = [
 
 
 # ---------------------------------------------------------------------------
-# Inline markdown
+# 行内 Markdown
 # ---------------------------------------------------------------------------
 
 _CODE_RE = re.compile(r"`([^`]+)`")
@@ -87,42 +87,42 @@ _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 
 
 def _norm_image_src(src):
-    """Normalize an image path to a form relative to dist-zh/index.html."""
+    """将图片路径规范化为相对于 dist-zh/index.html 的形式。"""
     src = src.strip()
     src = re.sub(r"^\.?/", "", src)  # ./images -> images, /images -> images
-    src = re.sub(r"^(?:markdown-zh/)?images/", "images/", src)
+    src = re.sub(r"^(?:markdown-zh/)?images/", "images/", src)  # 统一前缀为 images/
     return src
 
 
 def _link_repl(m):
-    # link text may itself contain inline markup (e.g. **bold**)
+    # 链接文本本身可能包含行内标记（例如 **加粗**）
     body = _BOLD_RE.sub(r"<strong>\1</strong>", m.group(1))
     return f'<a href="{m.group(2)}">{body}</a>'
 
 
 def inline(text):
-    """Inline markdown: code, images, links, bold. HTML-escaped first."""
+    """行内 Markdown：代码、图片、链接、加粗。先进行 HTML 转义。"""
     t = html_mod.escape(text, quote=False)
-    # code spans first so their content is never treated as other syntax
+    # 先处理代码片段，使其内容不会被当作其他语法
     t = _CODE_RE.sub(r"<code>\1</code>", t)
-    # images before links, so `![alt](src)` isn't eaten by the link rule
+    # 图片处理要在链接之前，以免 `![alt](src)` 被链接规则误匹配
     t = _IMG_RE.sub(lambda m: f'<img src="{_norm_image_src(m.group(2))}" '
                               f'alt="{m.group(1)}" loading="lazy">', t)
     t = _LINK_RE.sub(_link_repl, t)
     t = _BOLD_RE.sub(r"<strong>\1</strong>", t)
-    # drop orphaned markers left by sloppy source (unclosed ** etc.)
+    # 清理来源粗糙的文本遗留的孤立标记（未闭合的 ** 等）
     return t.replace("**", "").replace("__", "")
 
 
 # ---------------------------------------------------------------------------
-# Block-level markdown
+# 块级 Markdown
 # ---------------------------------------------------------------------------
 
 def md_to_html(md_text):
-    """Convert our markdown subset to HTML with proper list nesting."""
+    """将我们的 Markdown 子集转换为 HTML，并正确处理列表嵌套。"""
     lines = md_text.split("\n")
     out = []
-    stack = []  # list of ('ol'|'ul', indent, counter)
+    stack = []  # 列表栈：('ol'|'ul', 缩进, 计数器)
     para = []
 
     def flush_para():
@@ -145,37 +145,37 @@ def md_to_html(md_text):
             flush_para()
             i += 1
             continue
-        # heading
+        # 标题
         m = re.match(r"^(#{1,4})\s+(.*)$", stripped)
         if m:
             flush_para()
             close_all()
-            level = min(len(m.group(1)) + 1, 4)  # # -> h2 (h1 reserved for page)
+            level = min(len(m.group(1)) + 1, 4)  # # -> h2（h1 预留给页面标题）
             out.append(f"<h{level}>{inline(m.group(2))}</h{level}>")
             i += 1
             continue
-        # blockquote
+        # 引用块
         if stripped.startswith(">"):
             flush_para()
             close_all()
             out.append(f"<blockquote>{inline(stripped[1:].strip())}</blockquote>")
             i += 1
             continue
-        # ordered list item (with indent)
+        # 有序列表项（带缩进）
         m = re.match(r"^(\s*)(\d+)\.\s+(.*)$", line)
         if m:
             flush_para()
             indent = len(m.group(1))
             num = int(m.group(2))
-            # close deeper lists
+            # 关闭更深层的列表
             while stack and stack[-1][1] > indent:
                 kind = stack.pop()[0]
                 out.append(f"</{kind}>")
-            # same-level non-ol above -> close it
+            # 同缩进上方的非 ol 列表 -> 关闭它
             if stack and stack[-1][1] == indent and stack[-1][0] != "ol":
                 kind = stack.pop()[0]
                 out.append(f"</{kind}>")
-            # number resets to 1 while an ol at this indent already has items -> new list
+            # 该缩进已有 ol 且编号重置为 1 -> 开启新列表
             if stack and stack[-1][1] == indent and stack[-1][0] == "ol" and num == 1:
                 kind = stack.pop()[0]
                 out.append(f"</{kind}>")
@@ -185,7 +185,7 @@ def md_to_html(md_text):
             out.append(f"<li>{inline(m.group(3))}</li>")
             i += 1
             continue
-        # unordered list item
+        # 无序列表项
         m = re.match(r"^(\s*)[-*]\s+(.*)$", line)
         if m:
             flush_para()
@@ -202,7 +202,7 @@ def md_to_html(md_text):
             out.append(f"<li>{inline(m.group(2))}</li>")
             i += 1
             continue
-        # multi-line li continuation (indented text inside list context)
+        # 多行 li 续行（列表上下文中的缩进文本）
         if stack and line.startswith(" "):
             indent = len(line) - len(line.lstrip())
             if indent >= stack[-1][1]:
@@ -212,7 +212,7 @@ def md_to_html(md_text):
                     para.append(stripped)
                 i += 1
                 continue
-        # plain paragraph (closes any open lists)
+        # 普通段落（关闭所有已开启的列表）
         close_all()
         para.append(stripped)
         i += 1
@@ -223,7 +223,7 @@ def md_to_html(md_text):
 
 
 def strip_h1(md_text):
-    """Remove the leading `# Title` line (the menu provides the title)."""
+    """移除开头的 `# 标题` 行（标题由菜单提供）。"""
     md_text = md_text.lstrip("\ufeff")
     lines = md_text.splitlines()
     if lines and re.match(r"^#\s+", lines[0]):
@@ -232,11 +232,11 @@ def strip_h1(md_text):
 
 
 # ---------------------------------------------------------------------------
-# Assets
+# 静态资源
 # ---------------------------------------------------------------------------
 
 def discover_md():
-    """Map slug -> absolute md path from filenames like `03-wt-house.md`."""
+    """根据形如 `03-wt-house.md` 的文件名映射 slug -> 绝对 md 路径。"""
     found = {}
     for name in os.listdir(MD_DIR):
         m = re.fullmatch(r"\d+-([A-Za-z0-9-]+)\.md", name)
@@ -246,7 +246,7 @@ def discover_md():
 
 
 def copy_images():
-    """Copy markdown-zh/images -> dist-zh/images, return the copied names."""
+    """将 markdown-zh/images 复制到 dist-zh/images，返回已复制的文件名列表。"""
     os.makedirs(IMG_OUT, exist_ok=True)
     if not os.path.isdir(IMG_SRC):
         return []
@@ -386,7 +386,7 @@ SCRIPTS = """
 
 
 # ---------------------------------------------------------------------------
-# Build
+# 构建
 # ---------------------------------------------------------------------------
 
 def build():
@@ -405,7 +405,7 @@ def build():
     nav_items = []
     sections_html = []
     missing_images = []
-    idx = 0  # index of successfully rendered sections
+    idx = 0  # 成功渲染的章节索引
     for slug, title in SECTIONS:
         fp = by_slug.get(slug)
         if not fp:
@@ -413,7 +413,7 @@ def build():
         with open(fp, "r", encoding="utf-8") as f:
             md_text = f.read()
         md_text = strip_h1(md_text)
-        # check that every image referenced by this file was copied over
+        # 检查该文件引用的每张图片是否都已复制过去
         for _, src in _IMG_RE.findall(md_text):
             norm = _norm_image_src(src)
             if os.path.basename(norm) not in existing_imgs:
