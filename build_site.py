@@ -246,10 +246,20 @@ def discover_md():
 
 
 def copy_images():
-    """将 markdown/images 同步到根目录 images/，返回存在的文件名列表。"""
-    os.makedirs(IMG_OUT, exist_ok=True)
+    """将 markdown/images 同步到根目录 images/，返回同步后的文件名列表。
+
+    先清空 images/ 再复制，保证与源目录严格一一对应，不留孤儿文件。
+    """
     if not os.path.isdir(IMG_SRC):
         return []
+    if os.path.abspath(IMG_SRC) == os.path.abspath(IMG_OUT):
+        raise SystemExit("错误：图片源目录与输出目录相同，拒绝清空以免丢失源文件")
+    os.makedirs(IMG_OUT, exist_ok=True)
+    # 清空输出目录：源里已删除的图不应残留在发布目录
+    for name in os.listdir(IMG_OUT):
+        path = os.path.join(IMG_OUT, name)
+        if os.path.isfile(path):
+            os.remove(path)
     copied = []
     for name in os.listdir(IMG_SRC):
         shutil.copy2(os.path.join(IMG_SRC, name), os.path.join(IMG_OUT, name))
