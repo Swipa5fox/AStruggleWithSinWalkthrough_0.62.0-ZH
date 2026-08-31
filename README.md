@@ -8,7 +8,7 @@
 
 ## 说明
 
-- 游戏作者 Chyos：https://subscribestar.adult/chyos,https://www.patreon.com/Chyos
+- 游戏作者 Chyos：https://subscribestar.art/chyos，https://www.patreon.com/Chyos
 - 仅作于游戏内容分享，不适用于任何商业形式！！
 
 ## Q&A
