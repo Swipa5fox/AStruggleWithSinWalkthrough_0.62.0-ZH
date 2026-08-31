@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-从 markdown/（中文攻略）构建一个自包含的静态站点。
-输出直接落在仓库根目录：index.html（所有章节内联） + images/
-零外部依赖：无 CDN、无 JS 框架，可部署到任何静态托管平台。
 
-用法：
-    python build_site.py
-"""
 import html as html_mod
 import os
 import re
@@ -106,8 +99,7 @@ def inline(text):
     # 先处理代码片段，使其内容不会被当作其他语法
     t = _CODE_RE.sub(r"<code>\1</code>", t)
     # 图片处理要在链接之前，以免 `![alt](src)` 被链接规则误匹配
-    t = _IMG_RE.sub(lambda m: f'<img src="{_norm_image_src(m.group(2))}" '
-                              f'alt="{m.group(1)}" loading="lazy">', t)
+    t = _IMG_RE.sub(lambda m: f'<img src="{_norm_image_src(m.group(2))}" 'f'alt="{m.group(1)}" loading="lazy">', t)
     t = _LINK_RE.sub(_link_repl, t)
     t = _BOLD_RE.sub(r"<strong>\1</strong>", t)
     # 清理来源粗糙的文本遗留的孤立标记（未闭合的 ** 等）
