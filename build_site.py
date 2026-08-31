@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-从 markdown-zh/（中文攻略）构建一个自包含的静态站点。
-输出：dist-zh/index.html（所有章节内联） + dist-zh/images/
+从 markdown/（中文攻略）构建一个自包含的静态站点。
+输出直接落在仓库根目录：index.html（所有章节内联） + images/
 零外部依赖：无 CDN、无 JS 框架，可部署到任何静态托管平台。
 
 用法：
@@ -13,10 +13,10 @@ import re
 import shutil
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-MD_DIR = os.path.join(BASE, "markdown-zh")
+MD_DIR = os.path.join(BASE, "markdown")
 IMG_SRC = os.path.join(MD_DIR, "images")
-OUT = os.path.join(BASE, "dist-zh")
-IMG_OUT = os.path.join(OUT, "images")
+OUT = BASE  # 站点就是仓库根目录，GitHub Pages 直接发布 /(root)
+IMG_OUT = os.path.join(BASE, "images")
 
 # (slug, 菜单标题) - 顺序与 README 保持一致
 SECTIONS = [
@@ -87,10 +87,10 @@ _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 
 
 def _norm_image_src(src):
-    """将图片路径规范化为相对于 dist-zh/index.html 的形式。"""
+    """将图片路径规范化为相对于站点根目录 index.html 的形式。"""
     src = src.strip()
     src = re.sub(r"^\.?/", "", src)  # ./images -> images, /images -> images
-    src = re.sub(r"^(?:markdown-zh/)?images/", "images/", src)  # 统一前缀为 images/
+    src = re.sub(r"^(?:markdown/)?images/", "images/", src)  # 统一前缀为 images/
     return src
 
 
@@ -246,7 +246,7 @@ def discover_md():
 
 
 def copy_images():
-    """将 markdown-zh/images 复制到 dist-zh/images，返回已复制的文件名列表。"""
+    """将 markdown/images 同步到根目录 images/，返回存在的文件名列表。"""
     os.makedirs(IMG_OUT, exist_ok=True)
     if not os.path.isdir(IMG_SRC):
         return []
