@@ -131,7 +131,6 @@ ALIASES = {
 # 行内 Markdown
 # ---------------------------------------------------------------------------
 
-_CODE_RE = re.compile(r"`([^`]+)`")
 _IMG_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
@@ -153,9 +152,7 @@ def _link_repl(m):
 
 def inline(text):
     """行内 Markdown：代码、图片、链接、加粗。先进行 HTML 转义。"""
-    t = html_mod.escape(text, quote=False)
-    # 先处理代码片段，使其内容不会被当作其他语法
-    t = _CODE_RE.sub(r"<code>\1</code>", t)
+    t = html_mod.escape(text)
     # 图片处理要在链接之前，以免 `![alt](src)` 被链接规则误匹配
     t = _IMG_RE.sub(lambda m: f'<img src="{_norm_image_src(m.group(2))}" 'f'alt="{m.group(1)}" loading="lazy">', t)
     t = _LINK_RE.sub(_link_repl, t)
@@ -172,7 +169,7 @@ def md_to_html(md_text):
     """将我们的 Markdown 子集转换为 HTML，并正确处理列表嵌套。"""
     lines = md_text.split("\n")
     out = []
-    stack = []  # 列表栈：('ol'|'ul', 缩进, 计数器)
+    stack = []  # 列表栈：('ol'|'ul', 缩进)
     para = []
 
     def flush_para():
@@ -230,8 +227,9 @@ def md_to_html(md_text):
                 kind = stack.pop()[0]
                 out.append(f"</{kind}>")
             if not stack or stack[-1][1] != indent or stack[-1][0] != "ol":
-                out.append("<ol>")
-                stack.append(("ol", indent, 0))
+                # 续接的列表保留源文件的编号，否则读者按步骤号对不上
+                out.append("<ol>" if num == 1 else f'<ol start="{num}">')
+                stack.append(("ol", indent))
             out.append(f"<li>{inline(m.group(3))}</li>")
             i += 1
             continue
@@ -248,7 +246,7 @@ def md_to_html(md_text):
                 out.append(f"</{kind}>")
             if not stack or stack[-1][1] != indent or stack[-1][0] != "ul":
                 out.append("<ul>")
-                stack.append(("ul", indent, 0))
+                stack.append(("ul", indent))
             out.append(f"<li>{inline(m.group(2))}</li>")
             i += 1
             continue
@@ -410,7 +408,6 @@ blockquote {
   border-left: 4px solid var(--purple); background: #262b34; color: #c1c8d1;
   padding: 9px 14px; margin: 12px 0;
 }
-code { background: #303640; padding: 1px 6px; font-size: 13px; }
 #footer {
   width: min(1120px, 100%); color: var(--dim); font-size: 13px;
   margin: 24px auto 0; padding: 14px 4px 24px; border-top: 1px solid var(--line);
@@ -449,27 +446,29 @@ SCRIPTS = """
     title.textContent = target.getAttribute('data-title') || id;
   }
 
+  function gotoSection(id) {
+    show(id);
+    document.getElementById('content').scrollTop = 0;
+    // 窄屏下 #content 不是滚动容器，只能把 workspace 滚回顶部
+    if (window.innerWidth <= 760) {
+      document.getElementById('workspace').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   for (var i = 0; i < links.length; i++) {
     links[i].addEventListener('click', function() {
-      show(this.getAttribute('data-target'));
-      document.getElementById('content').scrollTop = 0;
-      document.getElementById('workspace').scrollTop = 0;
+      gotoSection(this.getAttribute('data-target'));
     });
   }
 
   function fromHash() {
     var id = (location.hash || '').replace('#', '');
-    if (id) { show(id); }
+    if (id) { gotoSection(id); }
   }
   window.addEventListener('hashchange', fromHash);
 
   var first = document.querySelector('.walkthrough-card');
-  if (first) {
-    first.classList.add('active');
-    first.setAttribute('aria-hidden', 'false');
-    var firstLink = document.querySelector('.section-link');
-    if (firstLink) { firstLink.classList.add('active'); firstLink.setAttribute('aria-current', 'page'); }
-  }
+  if (first) { show(first.id); }  // 首次加载不滚动，带 hash 进来时由 fromHash 跳转
   fromHash();
 
   // ---- 搜索：按角色名（中文 / 英文 / 拼音 / 首字母）定位章节 ----
@@ -557,13 +556,9 @@ SCRIPTS = """
     var id = view[n].item.id;
     closeResults();
     if (location.hash.slice(1) !== id) { location.hash = id; }  // 让搜索结果也能用链接分享
-    show(id);
-    document.getElementById('content').scrollTop = 0;
+    gotoSection(id);
     var link = document.querySelector('.section-link[data-target="' + id + '"]');
     if (link && link.scrollIntoView) { link.scrollIntoView({ block: 'nearest' }); }
-    if (window.innerWidth <= 760) {
-      document.getElementById('workspace').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }
 
   var timer = null;
