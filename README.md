@@ -2,7 +2,7 @@
 
 ## 🌐 在线入口
 
-**https://swipa5fox.github.io/AStruggleWithSinWalkthrough_0.62.0-ZH/**
+**https://swipa5fox.github.io/ASWS_Walkthrough_0.62.0-ZH/**
 
 左侧菜单有现版本全攻略模块，对角色以及区域任务已进行分区，部分内容有截图帮助大家解密。
 
