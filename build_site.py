@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import html as html_mod
+import json
 import os
 import re
 import shutil
@@ -67,6 +68,63 @@ SECTIONS = [
     ("wt-helena", "Helena 海伦娜"),
     ("wt-yasmine", "Yasmine 雅斯敏"),
 ]
+
+# slug -> 额外搜索关键词（拼音全拼 / 首字母 / 别名），让搜索支持中文输入法下的拼音
+ALIASES = {
+    "wt-info": "jibenxinxi jbxx info",
+    "wt-tips": "jiqiao jqyts tips",
+    "wt-house": "fangwufanxin fwfx",
+    "wt-intro": "xuzhang xz",
+    "wt-mc": "zhujue zj mc",
+    "wt-church": "jiaotang jt",
+    "wt-monastery": "xiudaoyuan xdy",
+    "wt-mira": "mila ml",
+    "wt-tia": "tiya ty",
+    "wt-katherin": "kaiselin ksl",
+    "wt-kate": "kaite kt",
+    "wt-claire": "kelaier kle",
+    "wt-carmen": "kamen km",
+    "wt-lucius": "luxiusi lxs",
+    "wt-frisha": "fulisha fls",
+    "wt-arianna": "alianna aln",
+    "wt-verena": "weileina wln",
+    "wt-rose": "luosi ls",
+    "wt-emily": "aimili aml",
+    "wt-corven": "keerwen kew",
+    "wt-john": "yuehan yh",
+    "wt-melissa": "meilisha mls",
+    "wt-imawyn": "yimawen ymw",
+    "wt-lyvia": "liweiya lwy",
+    "wt-maui": "mawuyi mwy",
+    "wt-bianca": "bianka bak",
+    "wt-gavina": "jiaweina jwn",
+    "wt-ugotha": "wugesa wgs",
+    "wt-snikka": "sinika snk",
+    "wt-natasha": "natasha nts",
+    "wt-ophilia": "aofeiliya afly",
+    "wt-anya": "anya ay",
+    "wt-penny": "peini pn",
+    "wt-lilly": "lili ll",
+    "wt-elisabeth": "yilishabai ylsb",
+    "wt-gwen": "gewen gw",
+    "wt-sabrina": "sabulina sbln",
+    "wt-athia": "axiya axy",
+    "wt-bridget": "buliqite blqt",
+    "wt-agatha": "ajiasha ajs",
+    "wt-heather": "xise xs",
+    "wt-rumah": "luma lumacun lmc",
+    "wt-raaisha": "layisha lys",
+    "wt-hiba": "xiba xb",
+    "wt-nyra": "nila nl",
+    "wt-ayita": "ayita ayt",
+    "wt-umah": "wuma wm",
+    "wt-darkholt": "daerhuote chongjian dkht",
+    "wt-mansion": "shizhangzhaidi szzd",
+    "wt-julia": "zhuliya zly",
+    "wt-liandra": "liandela ladl",
+    "wt-helena": "hailunna hln",
+    "wt-yasmine": "yasimin ysm",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -283,6 +341,36 @@ body {
 }
 #sidebar ul { list-style: none; padding: 0; margin: 0; }
 #sidebar li + li { margin-top: 2px; }
+.search-wrap {
+  position: relative; padding: 0 4px 10px; margin-bottom: 8px; border-bottom: 1px solid var(--line);
+}
+#search-input {
+  width: 100%; padding: 6px 26px 6px 9px; font: inherit; font-size: 14px; color: var(--text);
+  background: #17191d; border: 1px solid var(--line); border-radius: 4px;
+}
+#search-input::placeholder { color: #7b838f; }
+#search-input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(100, 255, 255, .12); }
+#search-input::-webkit-search-cancel-button { display: none; }
+#search-clear {
+  position: absolute; right: 10px; top: 5px; width: 18px; height: 22px; border: 0; background: transparent;
+  color: var(--dim); font-size: 16px; line-height: 1; cursor: pointer;
+}
+#search-clear:hover { color: var(--cyan); }
+#search-results {
+  max-height: 44vh; overflow-y: auto; margin: 0 4px 8px; border: 1px solid var(--line);
+  background: #17191d; border-radius: 4px;
+}
+#search-results:empty { display: none; }
+#search-results li { list-style: none; }
+.search-item {
+  width: 100%; border: 0; border-left: 3px solid transparent; background: transparent; color: var(--dim);
+  cursor: pointer; padding: 5px 8px; text-align: left; font: inherit; font-size: 14px; line-height: 1.35;
+}
+.search-item:hover, .search-item.active {
+  color: var(--cyan); background: rgba(100, 200, 255, .12); border-left-color: var(--cyan);
+}
+.search-empty { color: var(--dim); font-size: 13px; padding: 7px 9px; }
+mark { background: rgba(232, 194, 106, .30); color: #fff; border-radius: 2px; }
 .section-link {
   width: 100%; border: 0; border-left: 4px solid var(--line); background: transparent;
   color: var(--dim); cursor: pointer; padding: 4px 7px; text-align: left;
@@ -383,6 +471,160 @@ SCRIPTS = """
     if (firstLink) { firstLink.classList.add('active'); firstLink.setAttribute('aria-current', 'page'); }
   }
   fromHash();
+
+  // ---- 搜索：按角色名（中文 / 英文 / 拼音 / 首字母）定位章节 ----
+  var input = document.getElementById('search-input');
+  var box = document.getElementById('search-results');
+  var clearBtn = document.getElementById('search-clear');
+  if (!input || !box) { return; }
+
+  var raw = [];
+  try { raw = JSON.parse(document.getElementById('search-index').textContent); } catch (e) { raw = []; }
+  var items = [];
+  for (var i = 0; i < raw.length; i++) {
+    items.push({
+      id: raw[i].id,
+      title: raw[i].title,
+      // 去掉空格后匹配，这样 "凯瑟琳"/"kaiselin"/"ksl" 都能命中
+      hay: (raw[i].title + ' ' + (raw[i].keys || '')).toLowerCase().replace(/\\s+/g, '')
+    });
+  }
+
+  var view = [];
+  var active = -1;
+
+  function norm(s) { return s.toLowerCase().replace(/\\s+/g, ''); }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function highlight(text, q) {
+    var pos = q ? text.toLowerCase().indexOf(q) : -1;
+    if (pos < 0) { return esc(text); }
+    return esc(text.slice(0, pos)) + '<mark>' + esc(text.slice(pos, pos + q.length)) +
+           '</mark>' + esc(text.slice(pos + q.length));
+  }
+
+  function closeResults() {
+    box.hidden = true;
+    box.innerHTML = '';
+    view = [];
+    active = -1;
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  function render(q) {
+    view = [];
+    if (!q) { closeResults(); return; }
+    for (var i = 0; i < items.length; i++) {
+      var pos = items[i].hay.indexOf(q);
+      if (pos >= 0) { view.push({ item: items[i], pos: pos, order: i }); }
+    }
+    view.sort(function(a, b) { return a.pos - b.pos || a.order - b.order; });  // 靠前命中的排前面
+    if (!view.length) {
+      box.innerHTML = '<li class="search-empty">没有匹配的章节</li>';
+    } else {
+      var html = '';
+      for (var i = 0; i < view.length; i++) {
+        html += '<li role="option" aria-selected="' + (i === 0 ? 'true' : 'false') + '">' +
+                '<button type="button" class="search-item' + (i === 0 ? ' active' : '') +
+                '" data-index="' + i + '">' + highlight(view[i].item.title, q) + '</button></li>';
+      }
+      box.innerHTML = html;
+    }
+    active = view.length ? 0 : -1;
+    clearBtn.hidden = false;
+    box.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+  }
+
+  function setActive(n) {
+    if (!view.length) { return; }
+    active = (n + view.length) % view.length;
+    var btns = box.querySelectorAll('.search-item');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('active', i === active);
+      btns[i].parentNode.setAttribute('aria-selected', i === active ? 'true' : 'false');
+      if (i === active && btns[i].scrollIntoView) { btns[i].scrollIntoView({ block: 'nearest' }); }
+    }
+  }
+
+  function go(n) {
+    if (n < 0 || n >= view.length) { return; }
+    var id = view[n].item.id;
+    closeResults();
+    if (location.hash.slice(1) !== id) { location.hash = id; }  // 让搜索结果也能用链接分享
+    show(id);
+    document.getElementById('content').scrollTop = 0;
+    var link = document.querySelector('.section-link[data-target="' + id + '"]');
+    if (link && link.scrollIntoView) { link.scrollIntoView({ block: 'nearest' }); }
+    if (window.innerWidth <= 760) {
+      document.getElementById('workspace').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  var timer = null;
+  input.addEventListener('input', function() {
+    var q = norm(input.value);
+    clearBtn.hidden = !input.value;
+    clearTimeout(timer);
+    timer = setTimeout(function() { render(q); }, 80);
+  });
+  input.addEventListener('focus', function() {
+    if (input.value) { render(norm(input.value)); }
+  });
+
+  input.addEventListener('keydown', function(e) {
+    var q = norm(input.value);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (box.hidden) { render(q); } else { setActive(active + 1); }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive(active - 1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(timer);
+      if (box.hidden) { render(q); }
+      go(active);
+    } else if (e.key === 'Escape') {
+      input.value = '';
+      clearBtn.hidden = true;
+      closeResults();
+    }
+  });
+
+  box.addEventListener('click', function(e) {
+    var btn = e.target.closest ? e.target.closest('.search-item') : null;
+    if (btn) { go(parseInt(btn.getAttribute('data-index'), 10)); }
+  });
+
+  clearBtn.addEventListener('click', function() {
+    input.value = '';
+    clearBtn.hidden = true;
+    closeResults();
+    input.focus();
+  });
+
+  document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('search-box');
+    if (wrap && !wrap.contains(e.target)) { closeResults(); }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    var tag = e.target.tagName;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      input.focus();
+      input.select();
+    } else if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      e.preventDefault();
+      input.focus();
+    }
+  });
 })();
 """
 
@@ -406,6 +648,7 @@ def build():
 
     nav_items = []
     sections_html = []
+    search_index = []
     missing_images = []
     idx = 0  # 成功渲染的章节索引
     for slug, title in SECTIONS:
@@ -432,10 +675,16 @@ def build():
             f'\n<header class="card-title"><h2>{html_mod.escape(title)}</h2></header>'
             f'\n<div class="card-body">{body}</div>\n</section>'
         )
+        search_index.append({"id": slug, "title": title, "keys": ALIASES.get(slug, "")})
         idx += 1
 
     nav = "\n".join(nav_items)
     sections = "\n".join(sections_html)
+    # 搜索索引：标题 + 拼音别名，注入为 JSON 供前端搜索
+    search_data = (
+        json.dumps(search_index, ensure_ascii=False)
+        .replace("</", "<\\/")
+    )
 
     page = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -451,6 +700,13 @@ def build():
 <div id="layout">
   <nav id="sidebar" aria-label="章节导航">
     <h1>A Struggle With Sin<br>WalkThrough</h1>
+    <div id="search-box" class="search-wrap">
+      <input id="search-input" type="search" autocomplete="off" spellcheck="false"
+             placeholder="搜索角色 / 章节（Ctrl+K）" aria-label="搜索角色或章节"
+             role="combobox" aria-expanded="false" aria-controls="search-results">
+      <button id="search-clear" type="button" title="清空" aria-label="清空搜索" hidden>&times;</button>
+      <ul id="search-results" role="listbox" hidden></ul>
+    </div>
     <ul>{nav}</ul>
   </nav>
   <div id="workspace">
@@ -461,6 +717,7 @@ def build():
     </main>
   </div>
 </div>
+<script id="search-index" type="application/json">{search_data}</script>
 <script>
 {SCRIPTS}
 </script>
